@@ -29,7 +29,7 @@ AssemblyAI API not only converts speech to text but also analyzes audio to detec
 
 
 # Vision Language Model( Image Information Extraction)
-Caption
-LLaVA
-Video-Llama
-API (zhipu)
+Caption  
+LLaVA  
+Video-Llama  
+API (zhipu)  
