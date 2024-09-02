@@ -1,6 +1,7 @@
 # Chart Drawing
-![Software Diagram](./Chart1.png)
+![Software Diagram](./Screenshots/Chart1.png)
 
+# Tasks Allocation
 
 
 

@@ -7,6 +7,14 @@ Tang, Changli, et al. "Salmonn: Towards generic hearing abilities for large lang
 Lam, Max WY, et al. "Efficient neural music generation." Advances in Neural Information Processing Systems 36 (2024).
 
 # Audio to Text (Speech emotion recognition)
+## database
+RAVDESS: A multi-emotional, multi-language audio dataset containing speech and video in different emotional states.
+IEMOCAP: Contains dialogue data of actors in different emotional scenes, and is one of the most commonly used datasets in SER research.
+EmoDB: A German emotional speech database, often used for the evaluation of emotion recognition models.
+## Existing APIS
+https://www.assemblyai.com/
+AssemblyAI API not only converts speech to text but also analyzes audio to detect and recognize emotions within the speech.
+
 
 
 
