@@ -9,7 +9,9 @@ Lam, Max WY, et al. "Efficient neural music generation." Advances in Neural Info
 # Audio to Text (Speech emotion recognition)
 ## database
 RAVDESS: A multi-emotional, multi-language audio dataset containing speech and video in different emotional states.
+
 IEMOCAP: Contains dialogue data of actors in different emotional scenes, and is one of the most commonly used datasets in SER research.
+
 EmoDB: A German emotional speech database, often used for the evaluation of emotion recognition models.
 ## Existing APIS
 https://www.assemblyai.com/
