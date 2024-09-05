@@ -20,6 +20,13 @@ Development for the repo is done in Python 3.8.10
 
 # Interface
 
+## Python Interface
+```bash
+python run.py
+```
+
+
+## Gradio Interface
 A basic Gradio interface is provided to test out trained models. 
 
 For example, to create an interface for the [`stable-audio-open-1.0`](https://huggingface.co/stabilityai/stable-audio-open-1.0) model, once you've accepted the terms for the model on Hugging Face, you can run:
@@ -49,6 +56,5 @@ The `run_gradio.py` script accepts the following command line arguments:
 - `--model-half`
   - If true, the model weights to half-precision
   - Optional
-
 
 
