@@ -1,0 +1,4 @@
+funasr
+modelscope
+python-dotenv
+openai
