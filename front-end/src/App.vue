@@ -1,7 +1,7 @@
 <template>
-  <div class="min-h-screen flex flex-col">
+  <div class="min-h-screen flex flex-col items-end"> <!-- Added items-center to center content horizontally -->
     <!-- Header -->
-    <header class="flex justify-between items-center p-4 bg-white shadow-md">
+    <header class="flex justify-between items-center p-4 bg-white shadow-md w-full max-w-5xl"> <!-- Updated width -->
       <div class="text-xl font-bold">Music generator</div>
       <nav class="space-x-6">
         <a href="#" class="text-gray-700">Home page</a>
@@ -14,7 +14,7 @@
     </header>
 
     <!-- Main Content -->
-    <main class="flex-1 p-6 bg-gray-50 max-w-screen-lg mx-auto">
+    <main class="flex-1 p-6 bg-gray-50 w-full max-w-5xl mx-auto"> <!-- Centered and limited width -->
       <section class="text-center mb-8">
         <h1 class="text-5xl font-bold mb-4">Music World</h1>
         <p class="text-lg text-gray-600">
@@ -23,7 +23,7 @@
         </p>
       </section>
 
-      <img src="./assets/music.png">
+      <img src="./assets/music.png" alt="Music Notes" class="mx-auto mb-8 rounded-lg shadow-md">
 
       <section class="text-center mb-12">
         <h2 class="text-3xl font-semibold mb-4">Music generator</h2>
@@ -58,7 +58,7 @@
     </main>
 
     <!-- Footer -->
-    <footer class="bg-white p-6 shadow-inner max-w-screen-lg mx-auto">
+    <footer class="bg-white p-6 shadow-inner w-full max-w-5xl mx-auto">
       <div class="flex justify-between items-center">
         <p class="text-gray-600">&copy; 2024 Music World</p>
         <div class="flex space-x-4">
@@ -74,16 +74,94 @@
       </div>
     </footer>
   </div>
-</template>
 
+  <div class="min-h-screen flex flex-col items-center justify-center">
+    <!-- Audio Player -->
+    <div class="w-full max-w-screen-lg p-4 bg-gray-100 fixed bottom-0 left-0 flex justify-between items-center shadow-md">
+      <button @click="togglePlayPause" class="bg-blue-600 text-white px-4 py-2 rounded-md flex items-center justify-center">
+        <i :class="isPlaying ? 'fas fa-pause' : 'fas fa-play'"></i>
+    </button>
+    <button class="bg-blue-700 text-white px-4 py-2 rounded-md flex items-center justify-center">
+        <i class="fas fa-step-forward"></i>
+    </button>
+      
+      <div class="flex items-center space-x-4">
+        <span>{{ currentTimeDisplay }}</span> <!-- 当前时间 -->
+        <input 
+          type="range" 
+          min="0" 
+          :max="audioDuration" 
+          step="0.1" 
+          v-model="currentTime" 
+          @input="onTimeChange" 
+          class="w-64"
+        />
+        <span>{{ durationDisplay }}</span> <!-- 总时长 -->
+      </div>
+    </div>
+
+    <audio ref="audio" @timeupdate="updateCurrentTime" @loadedmetadata="setDuration">
+      <source src="./assets/Embrace_Darkness.mp3" type="audio/mpeg" />
+      Your browser does not support the audio tag.
+    </audio>
+  </div>
+
+</template>
 <script>
 export default {
-  name: 'App',
-}
+  data() {
+    return {
+      isPlaying: false,
+      currentTime: 0,
+      audioDuration: 0,
+    };
+  },
+  computed: {
+    // 格式化的当前时间
+    currentTimeDisplay() {
+      return this.formatTime(this.currentTime);
+    },
+    // 格式化的总时长
+    durationDisplay() {
+      return this.formatTime(this.audioDuration);
+    },
+  },
+  methods: {
+    // 播放和暂停切换
+    togglePlayPause() {
+      const audio = this.$refs.audio;
+      if (audio.paused) {
+        audio.play();
+        this.isPlaying = true;
+      } else {
+        audio.pause();
+        this.isPlaying = false;
+      }
+    },
+    // 更新进度条位置和当前时间
+    updateCurrentTime() {
+      this.currentTime = this.$refs.audio.currentTime;
+    },
+    // 拖动进度条改变当前时间
+    onTimeChange() {
+      this.$refs.audio.currentTime = this.currentTime;
+    },
+    // 获取音频的总时长
+    setDuration() {
+      this.audioDuration = this.$refs.audio.duration;
+    },
+    // 时间格式化函数
+    formatTime(time) {
+      const minutes = Math.floor(time / 60);
+      const seconds = Math.floor(time % 60).toString().padStart(2, '0');
+      return `${minutes}:${seconds}`;
+    },
+  },
+};
 </script>
 
 <style scoped>
-body {
-  font-family: 'Inter', sans-serif;
+audio {
+  display: none; /* 隐藏原始音频控件 */
 }
 </style>
