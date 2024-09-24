@@ -7,13 +7,14 @@ import torch
 def main(args):
     torch.manual_seed(42)
 
-    interface = create_ui(
+    interface = create_ui (
         model_config_path = args.model_config, 
         ckpt_path=args.ckpt_path, 
         pretrained_name=args.pretrained_name, 
         pretransform_ckpt_path=args.pretransform_ckpt_path,
         model_half=args.model_half
     )
+
     interface.queue()
     interface.launch(share=args.share, auth=(args.username, args.password) if args.username is not None else None)
 
