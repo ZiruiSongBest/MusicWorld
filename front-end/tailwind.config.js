@@ -16,7 +16,7 @@ export default {
     },
   },
   plugins: [
-    require('@tailwindcss/forms'), // 如果需要 Tailwind 表单插件
-    require('@tailwindcss/typography'), // 如果需要排版插件
+    // require('@tailwindcss/forms'), // 如果需要 Tailwind 表单插件
+    // require('@tailwindcss/typography'), // 如果需要排版插件
   ],
 }
