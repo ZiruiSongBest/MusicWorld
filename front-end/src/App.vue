@@ -1,11 +1,11 @@
 <template>
   <div class="min-h-screen flex flex-col items-end">
     <!-- Header -->
-    <header class="flex justify-between items-center p-4 bg-white shadow-md w-full max-w-5xl">
+    <header class="flex justify-between items-center p-4 bg-white shadow-md w-full mx-auto">
       <div class="text-xl font-bold">Music generator</div>
       <nav class="space-x-6">
         <a href="#" class="text-gray-700">Home page</a>
-        <a href="#" class="text-gray-700">Play page</a>
+        <router-link to="/library">Go to Library</router-link>
       </nav>
       <div class="flex items-center space-x-4">
         <img src="./assets/musichead.jpg" alt="User Avatar" class="rounded-full w-10 h-10">
@@ -17,7 +17,7 @@
     </header>
 
     <!-- Main Content -->
-    <main class="flex-1 p-6 bg-gray-50 w-full max-w-5xl mx-auto">
+    <main class="flex-1 p-6 bg-gray-50 w-full max-w-screen-lg mx-auto">
       <section class="text-center mb-8">
         <h1 class="text-5xl font-bold mb-4">Music World</h1>
         <p class="text-lg text-gray-600">
@@ -49,7 +49,7 @@
             <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" width="48" height="48">
               <path d="M12 3v10.55A4 4 0 1014 17V7h4V3h-6z"/>
             </svg>
-            <p class="text-gray-600">Audio input</p>
+            <p class="text-gray-600">Image input</p>
           </div>
           <div class="text-center">
             <!-- Replaced text file icon with SVG -->
@@ -89,7 +89,7 @@
 
   <div class="min-h-screen flex flex-col items-center justify-center">
     <!-- Audio Player -->
-    <div class="w-full max-w-screen-lg p-4 bg-gray-100 fixed bottom-0 left-0 flex justify-between items-center shadow-md">
+    <div class="w-full max-w-screen-lg p-4 bg-gray-100 fixed bottom-0 left-1/2 transform -translate-x-1/2 flex justify-between items-center shadow-md">
       <button @click="togglePlayPause" class="bg-blue-600 text-white px-4 py-2 rounded-md flex items-center justify-center">
         <!-- Play/Pause Icon Replaced with SVG -->
         <svg v-if="!isPlaying" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" width="24" height="24">
@@ -119,6 +119,7 @@
         <span>{{ durationDisplay }}</span>
       </div>
     </div>
+
 
     <audio ref="audio" @timeupdate="updateCurrentTime" @loadedmetadata="setDuration">
       <source src="./assets/Embrace_Darkness.mp3" type="audio/mpeg" />
