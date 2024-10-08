@@ -1,0 +1,15 @@
+<button id="get-data-btn">Get Processed Data</button>
+<div id="data-result"></div>
+
+<script>
+document.getElementById('get-data-btn').addEventListener('click', () => {
+    fetch('http://127.0.0.1:5000/api/get_processed_data')
+    .then(response => response.json())
+    .then(data => {
+        document.getElementById('data-result').innerText = JSON.stringify(data.data);
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });
+});
+</script>

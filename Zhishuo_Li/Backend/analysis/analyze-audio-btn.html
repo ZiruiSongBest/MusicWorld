@@ -1,0 +1,32 @@
+<input type="file" id="audio-file-input" accept="audio/*">
+<button id="analyze-audio-btn">Analyze Audio Emotion</button>
+<div id="audio-emotion-result"></div>
+
+<script>
+document.getElementById('analyze-audio-btn').addEventListener('click', () => {
+    const fileInput = document.getElementById('audio-file-input');
+    if(fileInput.files.length === 0) {
+        alert('Please select an audio file.');
+        return;
+    }
+    const file = fileInput.files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+
+    fetch('http://127.0.0.1:5000/api/audio_emotion', {
+        method: 'POST',
+        body: formData,
+    })
+    .then(response => response.json())
+    .then(data => {
+        if(data.status === 'success') {
+            document.getElementById('audio-emotion-result').innerText = `Emotion: ${data.result.emotion}`;
+        } else {
+            document.getElementById('audio-emotion-result').innerText = data.message;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });
+});
+</script>

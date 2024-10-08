@@ -1,0 +1,15 @@
+<button id="get-history-btn">Get Emotion Analysis History</button>
+<div id="history-result"></div>
+
+<script>
+document.getElementById('get-history-btn').addEventListener('click', () => {
+    fetch('http://127.0.0.1:5000/api/emotion_history')
+    .then(response => response.json())
+    .then(data => {
+        document.getElementById('history-result').innerText = JSON.stringify(data.history);
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });
+});
+</script>

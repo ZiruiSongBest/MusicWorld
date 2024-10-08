@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flask Frontend</title>
+</head>
+<body>
+    <h1>Flask Frontend Example</h1>
+    <div id="data"></div>
+    <button id="fetchDataBtn">Fetch Data from Flask</button>
+    <button id="sendDataBtn">Send Data to Flask</button>
+
+    <script>
+        document.getElementById('fetchDataBtn').addEventListener('click', () => {
+            fetch('http://127.0.0.1:5000/api/data')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('data').innerText = JSON.stringify(data);
+                })
+                .catch(error => console.error('Error:', error));
+        });
+
+        document.getElementById('sendDataBtn').addEventListener('click', () => {
+            const postData = { name: 'John Doe', age: 25 };
+
+            fetch('http://127.0.0.1:5000/api/post', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(postData),
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('data').innerText = JSON.stringify(data);
+            })
+            .catch(error => console.error('Error:', error));
+        });
+    </script>
+</body>
+</html>

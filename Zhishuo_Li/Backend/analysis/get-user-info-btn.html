@@ -1,0 +1,23 @@
+<button id="get-user-info-btn">Get User Info</button>
+<div id="user-info-result"></div>
+
+<script>
+document.getElementById('get-user-info-btn').addEventListener('click', () => {
+    const username = document.getElementById('login-username').value;
+
+    fetch('http://127.0.0.1:5000/api/user_info', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username }),
+    })
+    .then(response => response.json())
+    .then(data => {
+        if(data.status === 'success') {
+            document.getElementById('user-info-result').innerText = `Username: ${data.user.username}`;
+        } else {
+            document.getElementById('user-info-result').innerText = data.message;
+        }
+    })
+    .catch(error => console.error('Error:', error));
+});
+</script>

@@ -1,0 +1,24 @@
+<textarea id="summary-text-input" placeholder="Enter text to summarize"></textarea>
+<button id="summarize-btn">Summarize Text</button>
+<div id="summary-result"></div>
+
+<script>
+document.getElementById('summarize-btn').addEventListener('click', () => {
+    const text = document.getElementById('summary-text-input').value;
+
+    fetch('http://127.0.0.1:5000/api/summarize', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text: text }),
+    })
+    .then(response => response.json())
+    .then(data => {
+        document.getElementById('summary-result').innerText = data.summary;
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });
+});
+</script>
