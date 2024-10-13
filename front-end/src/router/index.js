@@ -1,18 +1,16 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import App from '@/App.vue'; // 默认页面
-import LibraryPage from '@/components/LibraryPage.vue'; // LibraryPage 组件
 
 const routes = [
   {
     path: '/',
     name: 'Home',
-    component: () => import('@/App.vue'), // 默认加载 App 页面
+    component: () => import('@/components/Home.vue'),  // 默认加载 Home 组件
   },
   {
     path: '/library',
-    component: () => import('@/components/LibraryPage.vue')
+    name: 'Library',
+    component: () => import('@/components/Library.vue'),  // 加载 Library 组件
   },
-  
 ];
 
 const router = createRouter({
