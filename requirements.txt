@@ -2,3 +2,7 @@ funasr
 modelscope
 python-dotenv
 openai
+transformers
+gradio
+websockets
+whisper
