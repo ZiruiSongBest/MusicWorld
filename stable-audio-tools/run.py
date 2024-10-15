@@ -2,11 +2,11 @@ import torch
 import soundfile as sf
 from diffusers import StableAudioPipeline
 
-pipe = StableAudioPipeline.from_pretrained("/home/zirsong/Data/conda_space/model_cache/hub/stable-audio-open-1.0", torch_dtype=torch.float16)
+pipe = StableAudioPipeline.from_pretrained("stabilityai/stable-audio-open-1.0", torch_dtype=torch.float16)
 pipe = pipe.to("cuda")
 
 # define the prompts
-prompt = "The sound of a hammer hitting a wooden surface."
+prompt = "The sound full anxious and other desperate"
 negative_prompt = "Low quality."
 
 # set the seed for generator
@@ -23,4 +23,4 @@ audio = pipe(
 ).audios
 
 output = audio[0].T.float().cpu().numpy()
-sf.write("hammer.wav", output, pipe.vae.sampling_rate)
+sf.write("test.wav", output, pipe.vae.sampling_rate)
