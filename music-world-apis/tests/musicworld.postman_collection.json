@@ -1,0 +1,57 @@
+{
+	"info": {
+		"_postman_id": "9cfa7c0d-2e16-4511-b632-bce027e3da07",
+		"name": "New Collection",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "29791811"
+	},
+	"item": [
+		{
+			"name": "AudioGeneration",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "text_prompt",
+							"value": "Good morning",
+							"type": "text"
+						},
+						{
+							"key": "audio",
+							"type": "file",
+							"src": "postman-cloud:///1ef8aeaa-17a1-4e50-a331-bb3c3f26bcf2",
+							"disabled": true
+						},
+						{
+							"key": "image",
+							"type": "file",
+							"src": [],
+							"disabled": true
+						},
+						{
+							"key": "video",
+							"type": "file",
+							"src": [],
+							"disabled": true
+						}
+					]
+				},
+				"url": {
+					"raw": "http://localhost:8000/generate",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8000",
+					"path": [
+						"generate"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

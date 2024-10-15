@@ -31,8 +31,8 @@ class AudioGenerator:
         
         return output
 
-    def save_audio(self, audio, output_file):
-        sf.write(output_file, audio, self.pipe.vae.sampling_rate)
+    def save_audio(self, audio, output_file_path):
+        sf.write(output_file_path, audio, self.pipe.vae.sampling_rate)
 
 
 audio_generator_service = AudioGenerator()

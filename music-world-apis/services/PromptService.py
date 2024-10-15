@@ -9,7 +9,7 @@ class PromptService:
     def __init__(self, openai_api_key=None):
         self.openai_client = OpenAI(api_key=openai_api_key or os.getenv("OPENAI_API_KEY"))
 
-    def create_prompt(self, text, image_url=None, model="gpt-4o"):
+    def create_prompt(self, text, image_url=None, model="gpt-4o-mini"):
         """
         Create a prompt that combines text and optional image content using OpenAI.
         
@@ -36,7 +36,7 @@ class PromptService:
                 messages=messages,
                 max_tokens=512
             )
-
+            print('Model response:', response.choices[0]['message']['content'])
             return 0, response.choices[0]['message']['content']
         except Exception as e:
             return 1, f"Error creating the prompt: {e}"

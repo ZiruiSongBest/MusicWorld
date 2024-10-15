@@ -21,6 +21,12 @@ async def generate_content(
     video: UploadFile = File(None),
 ):
     user_id = request.cookies.get("user_id")
+    
+    if not user_id:
+        return {"error": "user_id cookie is missing"}
+
+    user_folder = UPLOAD_DIR / user_id
+    user_folder.mkdir(parents=True, exist_ok=True)
 
     # Save uploaded files
     audio_path = await save_file(audio, user_id) if audio else None
@@ -40,21 +46,17 @@ async def generate_content(
         emotion = audio_analyzer_service.analyze(audio_path)
         audio_information = prompt_service.analyze_audio_file(audio_path, emotion)
 
+    description = prompt_service.create_prompt(
+        text=text_prompt,
+    )
+
+    generated_audio_path = user_folder / "generated_audio.wav"
+
     # generate audio
     generated_audio = audio_generator_service.generate_audio(
         text_prompt
     )
-
-    description = prompt_service.create_prompt(
-        text_prompt=text_prompt,
-        emotion=emotion,
-    )
-
-    user_folder = UPLOAD_DIR / user_id
-    generated_audio_path = user_folder / "generated_audio.mp3"
-
-    with open(generated_audio_path, "wb") as f:
-        f.write(generated_audio)
+    audio_generator_service.save_audio(generated_audio, generated_audio_path)
 
     # with open(album_image_path, "wb") as f:
     #     f.write(album_image)
