@@ -1,6 +1,6 @@
 from openai import OpenAI
 from dotenv import load_dotenv
-from services.prompt import prompt
+from services.prompt import prompt as prompt_template
 import os
 
 load_dotenv()
@@ -9,7 +9,7 @@ class PromptService:
     def __init__(self, openai_api_key=None):
         self.openai_client = OpenAI(api_key=openai_api_key or os.getenv("OPENAI_API_KEY"))
 
-    def create_prompt(self, text, image_url=None, model="gpt-4o-mini"):
+    def create_prompt(self, text, image_url=None, model="gpt-4o"):
         """
         Create a prompt that combines text and optional image content using OpenAI.
         
@@ -22,22 +22,27 @@ class PromptService:
             tuple: (result_code, response_text). result_code 0 for success, 1 for error.
         """
         try:
-            messages = [{"role": "user", "content": {"type": "text", "text": text}}]
+            prompt_text = prompt_template["generate_audio_prompt"].format(input=text)
+            
+            print('*' * 10)
+            print('openai prompt:', prompt_text)
+            print('*' * 10)
+
+            messages = [{"role": "user", "content": [{"type": "text", "text": prompt_text}]}]
 
             if image_url:
-                image_content = {
+                messages[0]["content"].append({
                     "type": "image_url",
                     "image_url": {"url": image_url}
-                }
-                messages.append({"role": "user", "content": image_content})
+                })
 
             response = self.openai_client.chat.completions.create(
                 model=model,
                 messages=messages,
                 max_tokens=512
             )
-            print('Model response:', response.choices[0]['message']['content'])
-            return 0, response.choices[0]['message']['content']
+            print('Model response:', response.choices[0].message.content)
+            return 0, response.choices[0].message.content
         except Exception as e:
             return 1, f"Error creating the prompt: {e}"
 

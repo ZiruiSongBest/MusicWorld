@@ -41,20 +41,44 @@ async def generate_content(
     if video_path:
         asyncio.create_task(schedule_deletion(video_path))
 
-    emotion = None
     if audio_path:
-        emotion = audio_analyzer_service.analyze(audio_path)
-        audio_information = prompt_service.analyze_audio_file(audio_path, emotion)
-
-    description = prompt_service.create_prompt(
-        text=text_prompt,
+        audio_information = audio_analyzer_service.audio_analysis(audio_path, text_prompt)
+    
+    input_information = ""
+    if text_prompt:
+        input_information += (
+            "User's text prompt: {text}\n".format(text=text_prompt)
+        )
+    if audio_path and audio_information[0] == 0:
+        input_information += (
+            "Audio: the user uploaded a audio piece with these analysis results: {audio_information}\n".format(audio_information=audio_information[1])
+            )
+    if image_path:
+        input_information += (
+            "Image: the user uploaded a image with this description: {image_information}\n".format(image_information=image_information)
+        )
+    if video_path:
+        input_information += (
+            "Video: the user uploaded a video with this description: {video_information}\n".format(video_information=video_information)
+        )
+    
+    print('*' * 10)
+    print('final prompt:', input_information)
+    print('*' * 10)
+        
+    result_code, description = prompt_service.create_prompt(
+        text=input_information,
     )
+
+    print('-' * 10)
+    print('final prompt:', description)
+    print('-' * 10)
 
     generated_audio_path = user_folder / "generated_audio.wav"
 
     # generate audio
     generated_audio = audio_generator_service.generate_audio(
-        text_prompt
+        description
     )
     audio_generator_service.save_audio(generated_audio, generated_audio_path)
 
@@ -73,7 +97,7 @@ async def generate_content(
     # base_url = f"{request.url.scheme}://{request.url.hostname}:{request.url.port}"
     # audio_url = f"{base_url}/uploads/{user_id}/generated_audio.mp3"
     # return {
-    #     "audio_url": audio_url,
+        # "audio_url": audio_url,
     # }
 
 
