@@ -16,7 +16,7 @@ struct ContentView: View {
                     Text("Generate")
                 }
             
-            ListView()
+            ListGeneratedView()
                 .modelContainer(for: Item.self, inMemory: true)
                 .tabItem {
                     Image(systemName: "music.note.list")

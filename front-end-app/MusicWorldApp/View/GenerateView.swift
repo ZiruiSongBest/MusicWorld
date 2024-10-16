@@ -1,6 +1,7 @@
 import SwiftUI
 import UniformTypeIdentifiers
 import AVFoundation
+import PhotosUI
 
 struct GenerateView: View {
     @State private var selectedTab = 0
@@ -19,9 +20,14 @@ struct GenerateView: View {
     @State private var audioPlayer: AVPlayer?
     @State private var audioData: Data?
     @State private var isShowingAudioPlayer = false
+    @State private var isInputting = false
+    @State private var isShowingImageSourcePicker = false
+    @State private var isShowingPhotolib = false
+    @State private var selectedItem: PhotosPickerItem?
+    @State private var selectedImage: UIImage?
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 20) {
                 HStack {
                     Spacer()
@@ -29,28 +35,7 @@ struct GenerateView: View {
                         .padding()
                 }
                 
-                HStack(spacing: 30) {
-                    IconButton(icon: "doc.text", color: .blue, label: "File") {
-                        selectedTab = 0
-                        selectedFileType = .plainText
-                        isImporting = true
-                    }
-                    IconButton(icon: "music.note", color: .pink, label: "Audio") {
-                        selectedTab = 1
-                        selectedFileType = .audio
-                        isImporting = true
-                    }
-                    IconButton(icon: "photo.on.rectangle", color: .pink, label: "Image") {
-                        selectedTab = 2
-                        selectedFileType = .image
-                        isImporting = true
-                    }
-                    IconButton(icon: "video", color: .green, label: "Video") {
-                        selectedTab = 3
-                        selectedFileType = .movie
-                        isImporting = true
-                    }
-                }
+                iconButtonsRow()
                 
                 Picker("", selection: $selectedTab) {
                     Text("File").tag(0)
@@ -62,42 +47,84 @@ struct GenerateView: View {
                 .padding(.horizontal)
                 
                 ScrollView {
-                    if selectedTab == 0 {
-                        HStack(alignment: .center) {
-                            GrowingTextInputView(text: $text, placeholder: "Message")
-                                .cornerRadius(10)
-                        }
-                        .padding(.horizontal)
-                    }
-                    
-                    if filteredItems.isEmpty && selectedTab != 0 {
-                        Text("No \(selectedTabLabel) selected to upload yet")
-                            .foregroundColor(.gray)
-                            .padding(.vertical, 200)
-                    } else {
-                        LazyVStack(spacing: 10) {
-                            ForEach(filteredItems) { item in
-                                ItemView(item: item)
-                                    .background(Color.gray.opacity(0.1))
-                                    .cornerRadius(10)
-                                    .contextMenu {
-                                        Button(action: {
-                                            if let index = items.firstIndex(where: { $0.id == item.id }) {
-                                                items.remove(at: index)
-                                            }
-                                        }) {
-                                            Label("Delete", systemImage: "trash")
-                                        }
-                                    }
-                            }
-                        }
-                        .padding(.horizontal)
+                    VStack {
+                        inputSection
+                        itemsList
                     }
                 }
                 .padding(.horizontal)
                 
-                Spacer()
+                generateButton
                 
+                .navigationDestination(isPresented: $isShowingAudioPlayer) {
+                    AudioPlayerView(audioData: audioData ?? Data())
+                }
+            }
+            .padding(10)
+            .fileImporter(
+                isPresented: $isImporting,
+                allowedContentTypes: [selectedFileType]
+            ) { result in
+                switch result {
+                case .success(let file):
+                    handleFileImport(url: file)
+                case .failure(let error):
+                    print("Error importing file: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+    
+    private var inputSection: some View {
+        Group {
+            if selectedTab == 0 {
+                HStack(alignment: .center) {
+                    GrowingTextInputView(text: $text, placeholder: "Message", isInputting: $isInputting)
+                        .cornerRadius(10)
+                    
+                    if isInputting {
+                        Button("Done") {
+                            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                            isInputting = false
+                        }
+                    }
+                }
+                .padding(.horizontal)
+            }
+        }
+    }
+    
+    private var itemsList: some View {
+        Group {
+            if filteredItems.isEmpty && selectedTab != 0 {
+                Text("No \(selectedTabLabel) selected to upload yet")
+                    .foregroundColor(.gray)
+                    .padding(.vertical, 200)
+            } else {
+                LazyVStack(spacing: 10) {
+                    ForEach(filteredItems) { item in
+                        ItemView(item: item)
+                            .background(Color.gray.opacity(0.1))
+                            .cornerRadius(10)
+                            .contextMenu {
+                                Button(action: {
+                                    if let index = items.firstIndex(where: { $0.id == item.id }) {
+                                        items.remove(at: index)
+                                    }
+                                }) {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
+                    }
+                }
+                .padding(.horizontal)
+            }
+        }
+    }
+    
+    private var generateButton: some View {
+        Group {
+            if !isInputting {
                 HStack {
                     Image(systemName: "waveform")
                         .resizable()
@@ -116,23 +143,6 @@ struct GenerateView: View {
                             .cornerRadius(20)
                     }
                     .padding(10)
-                }
-                .padding(10)
-                
-                NavigationLink(destination: AudioPlayerView(audioData: audioData ?? Data()), isActive: $isShowingAudioPlayer) {
-                    EmptyView()
-                }
-            }
-            .padding(10)
-            .fileImporter(
-                isPresented: $isImporting,
-                allowedContentTypes: [selectedFileType]
-            ) { result in
-                switch result {
-                case .success(let file):
-                    handleFileImport(url: file)
-                case .failure(let error):
-                    print("Error importing file: \(error.localizedDescription)")
                 }
             }
         }
@@ -329,6 +339,54 @@ struct GenerateView: View {
     private func getDocumentsDirectory() -> URL {
         return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
     }
+    
+    private func iconButtonsRow() -> some View {
+        HStack(spacing: 30) {
+            iconButton(icon: "doc.text", color: .blue, label: "File", tab: 0, fileType: .plainText)
+            iconButton(icon: "music.note", color: .pink, label: "Audio", tab: 1, fileType: .audio)
+            imageIconButton()
+            iconButton(icon: "video", color: .green, label: "Video", tab: 3, fileType: .movie)
+        }
+    }
+    
+    private func imageIconButton() -> some View {
+        IconButton(icon: "photo.on.rectangle", color: .pink, label: "Image") {
+            selectedTab = 2
+            selectedFileType = .image
+            isShowingImageSourcePicker = true
+        }
+        .confirmationDialog("Choose Image Source", isPresented: $isShowingImageSourcePicker) {
+            Button("Photo Library") {
+                // This will be handled by PhotosPicker
+                isShowingPhotolib = true
+            }
+            Button("File Import") {
+                isImporting = true
+            }
+        }
+        .photosPicker(isPresented: $isShowingPhotolib,
+                      selection: $selectedItem,
+                      matching: .images)
+        .onChange(of: selectedItem) { oldItem, newItem in
+            Task {
+                if let data = try? await newItem?.loadTransferable(type: Data.self) {
+                    if let uiImage = UIImage(data: data) {
+                        selectedImage = uiImage
+                        let item = Item(title: "Selected Image", duration: "\(data.count) bytes", content: data, type: .image)
+                        items.append(item)
+                    }
+                }
+            }
+        }
+    }
+
+    private func iconButton(icon: String, color: Color, label: String, tab: Int, fileType: UTType) -> some View {
+        IconButton(icon: icon, color: color, label: label) {
+            selectedTab = tab
+            selectedFileType = fileType
+            isImporting = true
+        }
+    }
 }
 
 struct IconButton: View {
@@ -392,7 +450,6 @@ struct ItemView: View {
         }
     }
 }
-
 
 struct GenerateView_Previews: PreviewProvider {
     static var previews: some View {

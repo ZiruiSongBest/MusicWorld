@@ -1,12 +1,14 @@
 import SwiftUI
 
 struct GrowingTextInputView: View {
-  init(text: Binding<String?>, placeholder: String?) {
+  init(text: Binding<String?>, placeholder: String?, isInputting: Binding<Bool>) {
     self._text = text
     self.placeholder = placeholder
+    self._isInputting = isInputting
   }
 
   @Binding var text: String?
+  @Binding var isInputting: Bool
   @State var focused: Bool = false
   @State var contentHeight: CGFloat = 0
 
@@ -28,8 +30,11 @@ struct GrowingTextInputView: View {
         placeholderView
               .padding(20)
       }
-//      .padding(.horizontal, 4)
-    }.frame(height: countedHeight)
+    }
+    .frame(height: countedHeight)
+    .onChange(of: focused) { oldValue, newValue in
+      isInputting = newValue
+    }
   }
 
   var placeholderView: some View {
@@ -57,7 +62,8 @@ struct GrowingTextInputView_Previews: PreviewProvider {
   static var previews: some View {
     GrowingTextInputView(
       text: $text,
-      placeholder: "Placeholder"
+      placeholder: "Placeholder",
+      isInputting: .constant(false)
     ).cornerRadius(10)
   }
 }
