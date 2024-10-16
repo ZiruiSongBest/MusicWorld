@@ -13,10 +13,10 @@ class Item: Identifiable {
     var id = UUID()
     var title: String
     var duration: String
-    var content: String
+    var content: Data // Change from String to Data
     var type: ItemType
     
-    init(id: UUID = UUID(), title: String, duration: String, content: String, type: ItemType) {
+    init(id: UUID = UUID(), title: String, duration: String, content: Data, type: ItemType) {
         self.id = id
         self.title = title
         self.duration = duration
@@ -29,9 +29,9 @@ class Item: Identifiable {
     }
     
     func saveContentToFile() {
-        let fileURL = getDocumentsDirectory().appendingPathComponent("\(id).txt")
+        let fileURL = getDocumentsDirectory().appendingPathComponent("\(id).bin") // Use .bin for binary files
         do {
-            try content.write(to: fileURL, atomically: true, encoding: .utf8)
+            try content.write(to: fileURL)
             print("File saved successfully at \(fileURL)")
         } catch {
             print("Failed to save file: \(error.localizedDescription)")
@@ -39,7 +39,7 @@ class Item: Identifiable {
     }
     
     func loadContentFromFile() {
-        let fileURL = getDocumentsDirectory().appendingPathComponent("\(id).txt")
+        let fileURL = getDocumentsDirectory().appendingPathComponent("\(id).bin")
         let accessing = fileURL.startAccessingSecurityScopedResource()
         defer {
             if accessing {
@@ -48,7 +48,7 @@ class Item: Identifiable {
         }
         
         do {
-            content = try String(contentsOf: fileURL, encoding: .utf8)
+            content = try Data(contentsOf: fileURL)
             print("File loaded successfully from \(fileURL)")
         } catch {
             print("Failed to load file: \(error.localizedDescription)")
