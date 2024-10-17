@@ -10,52 +10,68 @@ import SwiftData
 
 struct ListGeneratedView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
+    @Query private var generatedContents: [GeneratedContent]
 
     var body: some View {
-        NavigationSplitView {
+        NavigationView {
             List {
-//                ForEach(items) { item in
-//                    NavigationLink {
-//                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-//                    } label: {
-//                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
-//                    }
-//                }
-//                .onDelete(perform: deleteItems)
-            }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
+                ForEach(generatedContents) { content in
+                    NavigationLink(destination: GeneratedContentDetailView(content: content)) {
+                        VStack(alignment: .leading) {
+                            Text(content.prompt)
+                                .font(.headline)
+                            Text("Items: \(content.items.count)")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
                     }
                 }
+                .onDelete(perform: deleteGeneratedContent)
             }
-        } detail: {
-            Text("Select an item")
+            .navigationTitle("Generated Content")
+            .toolbar {
+                EditButton()
+            }
         }
     }
 
-    private func addItem() {
-        withAnimation {
-//            let newItem = Item(timestamp: Date())
-//            modelContext.insert(newItem)
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
+    private func deleteGeneratedContent(offsets: IndexSet) {
         withAnimation {
             for index in offsets {
-                modelContext.delete(items[index])
+                modelContext.delete(generatedContents[index])
             }
         }
     }
 }
 
+struct GeneratedContentDetailView: View {
+    let content: GeneratedContent
+
+    var body: some View {
+        List {
+            Section(header: Text("Prompt")) {
+                Text(content.prompt)
+            }
+            
+            Section(header: Text("Items")) {
+                ForEach(content.items) { item in
+                    ItemView(item: item)
+                }
+            }
+            
+            if !content.generatedAudioData.isEmpty {
+                Section(header: Text("Generated Audio")) {
+                    ForEach(content.generatedAudioData.indices, id: \.self) { index in
+                        NavigationLink("Audio \(index + 1)", destination: AudioPlayerView(audioData: content.generatedAudioData[index]))
+                    }
+                }
+            }
+        }
+        .navigationTitle("Generated Content Details")
+    }
+}
+
 #Preview {
     ListGeneratedView()
-        .modelContainer(for: Item.self, inMemory: true)
+        .modelContainer(for: [GeneratedContent.self, Item.self], inMemory: true)
 }

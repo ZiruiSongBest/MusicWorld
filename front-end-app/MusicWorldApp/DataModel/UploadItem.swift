@@ -9,11 +9,11 @@ import Foundation
 import SwiftData
 
 @Model
-class Item: Identifiable {
-    var id = UUID()
+final class Item: Identifiable {
+    var id: UUID
     var title: String
     var duration: String
-    var content: Data // Change from String to Data
+    var content: Data
     var type: ItemType
     
     init(id: UUID = UUID(), title: String, duration: String, content: Data, type: ItemType) {
@@ -25,7 +25,7 @@ class Item: Identifiable {
     }
     
     enum ItemType: String, Codable {
-        case audio, file, image
+        case audio, file, image, video
     }
     
     func saveContentToFile() {

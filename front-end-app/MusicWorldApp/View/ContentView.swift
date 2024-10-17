@@ -6,8 +6,11 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct ContentView: View {
+    @Environment(\.modelContext) private var modelContext
+
     var body: some View {
         TabView {
             GenerateView()
@@ -17,22 +20,22 @@ struct ContentView: View {
                 }
             
             ListGeneratedView()
-                .modelContainer(for: Item.self, inMemory: true)
                 .tabItem {
                     Image(systemName: "music.note.list")
                     Text("List")
                 }
         }
-    
     }
 }
 
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         ContentView()
+            .modelContainer(for: [GeneratedContent.self, Item.self], inMemory: true)
     }
 }
 
 #Preview {
     ContentView()
+        .modelContainer(for: [GeneratedContent.self, Item.self], inMemory: true)
 }

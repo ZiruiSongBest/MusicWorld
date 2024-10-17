@@ -2,6 +2,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 import AVFoundation
 import PhotosUI
+import SwiftData
 
 struct GenerateView: View {
     @State private var selectedTab = 0
@@ -25,6 +26,12 @@ struct GenerateView: View {
     @State private var isShowingPhotolib = false
     @State private var selectedItem: PhotosPickerItem?
     @State private var selectedImage: UIImage?
+    @State private var isGenerating = false
+    @State private var generationStatus = ""
+    @State private var showErrorAlert = false
+    @State private var errorMessage = ""
+    @Environment(\.modelContext) private var modelContext
+    @State private var currentGeneratedContent: GeneratedContent?
     
     var body: some View {
         NavigationStack {
@@ -56,8 +63,9 @@ struct GenerateView: View {
                 
                 generateButton
                 
-                .navigationDestination(isPresented: $isShowingAudioPlayer) {
-                    AudioPlayerView(audioData: audioData ?? Data())
+                if isGenerating {
+                    ProgressView(generationStatus)
+                        .padding()
                 }
             }
             .padding(10)
@@ -71,6 +79,14 @@ struct GenerateView: View {
                 case .failure(let error):
                     print("Error importing file: \(error.localizedDescription)")
                 }
+            }
+            .alert("Error", isPresented: $showErrorAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(errorMessage)
+            }
+            .navigationDestination(isPresented: $isShowingAudioPlayer) {
+                AudioPlayerView(audioData: audioData ?? Data())
             }
         }
     }
@@ -126,22 +142,28 @@ struct GenerateView: View {
         Group {
             if !isInputting {
                 HStack {
-                    Image(systemName: "waveform")
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 30, height: 30)
-                        .foregroundColor(.blue)
+                    if isGenerating {
+                        ProgressView()
+                            .frame(width: 30, height: 30)
+                    } else {
+                        Image(systemName: "waveform")
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 30, height: 30)
+                            .foregroundColor(.blue)
+                    }
                     
                     Button(action: {
                         generateAudio()
                     }) {
-                        Text("Generate")
+                        Text(isGenerating ? "Generating..." : "Generate")
                             .foregroundColor(.white)
                             .padding(.horizontal, 20)
                             .padding(.vertical, 10)
-                            .background(Color.blue)
+                            .background(isGenerating ? Color.gray : Color.blue)
                             .cornerRadius(20)
                     }
+                    .disabled(isGenerating)
                     .padding(10)
                 }
             }
@@ -234,38 +256,48 @@ struct GenerateView: View {
     }
     
     private func generateAudio() {
-        guard let url = URL(string: "http://localhost:8000/generate") else { return }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        
-        let boundary = UUID().uuidString
-        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-        
-        let formData = createFormData(boundary: boundary)
-        request.httpBody = formData
-        
-        let task = URLSession.shared.dataTask(with: request) { [self] data, response, error in
-            if let error = error {
-                print("Error: \(error.localizedDescription)")
-                return
-            }
-            
-            if let httpResponse = response as? HTTPURLResponse {
-                print("Status Code: \(httpResponse.statusCode)")
-                print("Headers: \(httpResponse.allHeaderFields)")
-            }
-            
-            if let data = data {
-                print("Received audio data of size: \(data.count) bytes")
-                DispatchQueue.main.async {
-                    audioData = data
-                    isShowingAudioPlayer = true
+        isGenerating = true
+        generationStatus = "Preparing request..."
+        let textPrompt = text ?? "Default additional text"
+
+        // Create a new GeneratedContent instance
+        let newGeneratedContent = GeneratedContent(prompt: textPrompt)
+        items.forEach { newGeneratedContent.addItem($0) }
+
+        NetworkManager.shared.generateAudio(textPrompt: textPrompt, items: items) { data, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    self.isGenerating = false
+                    self.errorMessage = "Error generating audio: \(error.localizedDescription)"
+                    self.showErrorAlert = true
+                    return
+                }
+
+                if let data = data {
+                    self.generationStatus = "Processing audio..."
+                    self.audioData = data
+
+                    // Store the generated audio in the GeneratedContent instance
+                    newGeneratedContent.addGeneratedAudio(data)
+
+                    // Save the GeneratedContent to SwiftData
+                    self.modelContext.insert(newGeneratedContent)
+                    do {
+                        try self.modelContext.save()
+                        print("GeneratedContent saved successfully")
+                    } catch {
+                        print("Error saving GeneratedContent: \(error)")
+                    }
+
+                    self.isShowingAudioPlayer = true
+                    self.isGenerating = false
+                } else {
+                    self.isGenerating = false
+                    self.errorMessage = "No audio data received"
+                    self.showErrorAlert = true
                 }
             }
         }
-        
-        task.resume()
     }
     
     private func playAudio(data: Data) {
@@ -307,10 +339,10 @@ struct GenerateView: View {
                     fieldName = "image"
                     mimeType = "image/jpeg"
                     fileExtension = "jpg"
-                // case .video:
-                //     fieldName = "video"
-                //     mimeType = "video/mp4"
-                //     fileExtension = "mp4"
+                 case .video:
+                     fieldName = "video"
+                     mimeType = "video/mp4"
+                     fileExtension = "mp4"
                 default:
                     continue
                 }
@@ -447,12 +479,14 @@ struct ItemView: View {
             return "doc.circle"
         case .image:
             return "photo.circle"
+        case .video:
+            return "video.circle"
         }
     }
 }
 
-struct GenerateView_Previews: PreviewProvider {
-    static var previews: some View {
-        GenerateView()
-    }
-}
+// struct GenerateView_Previews: PreviewProvider {
+//     static var previews: some View {
+//         GenerateView()
+//     }
+// }
