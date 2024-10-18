@@ -14,6 +14,13 @@ async def save_file(file: UploadFile, user_id: str):
         shutil.copyfileobj(file.file, buffer)
     return file_path
 
+async def save_multiple_files(files: list[UploadFile], user_id: str) -> list[Path]:
+    paths = []
+    for file in files:
+        path = await save_file(file, user_id)
+        paths.append(path)
+    return paths
+
 
 async def schedule_deletion(file_path: Path, delay: int = 2000):
     await asyncio.sleep(delay)
