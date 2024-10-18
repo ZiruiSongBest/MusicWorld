@@ -12,9 +12,23 @@ class NetworkManager {
     
     private init() {}
     
-    func generateAudio(textPrompt: String, items: [Item], completion: @escaping (Data?, Error?) -> Void) {
-        guard let url = URL(string: "http://localhost:8000/generate") else {
-            completion(nil, NSError(domain: "Invalid URL", code: 0, userInfo: nil))
+    // Key for storing the network address in UserDefaults
+    private let networkAddressKey = "NetworkAddress"
+    
+    // Property to get and set the network address
+    var networkAddress: String {
+        get {
+            return UserDefaults.standard.string(forKey: networkAddressKey) ?? ""
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: networkAddressKey)
+        }
+    }
+    
+    func generateAudio(textPrompt: String, items: [Item], completion: @escaping (Data?, String?, Error?) -> Void) {
+        guard !networkAddress.isEmpty,
+              let url = URL(string: networkAddress + "/generate") else {
+            completion(nil, nil, NSError(domain: "Invalid URL", code: 0, userInfo: nil))
             return
         }
         
@@ -24,13 +38,16 @@ class NetworkManager {
         let boundary = UUID().uuidString
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         
+        // Add the network address to the request headers
+        request.setValue(networkAddress, forHTTPHeaderField: "X-Network-Address")
+        
         let formData = createFormData(textPrompt: textPrompt, items: items, boundary: boundary)
         request.httpBody = formData
         
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
                 print("Error: \(error.localizedDescription)")
-                completion(nil, error)
+                completion(nil, nil, error)
                 return
             }
             
@@ -39,16 +56,20 @@ class NetworkManager {
                 print("Headers: \(httpResponse.allHeaderFields)")
                 
                 if httpResponse.statusCode != 200 {
-                    completion(nil, NSError(domain: "HTTP Error", code: httpResponse.statusCode, userInfo: nil))
+                    completion(nil, nil, NSError(domain: "HTTP Error", code: httpResponse.statusCode, userInfo: nil))
                     return
                 }
-            }
-            
-            if let data = data {
-                print("Received audio data of size: \(data.count) bytes")
-                completion(data, nil)
-            } else {
-                completion(nil, NSError(domain: "No data received", code: 0, userInfo: nil))
+                
+                // Extract the description from the custom header
+                let description = httpResponse.allHeaderFields["X-Audio-Description"] as? String
+                print("Audio Description: \(description ?? "No description available")")
+                
+                if let data = data {
+                    print("Received audio data of size: \(data.count) bytes")
+                    completion(data, description, nil)
+                } else {
+                    completion(nil, nil, NSError(domain: "No data received", code: 0, userInfo: nil))
+                }
             }
         }
         

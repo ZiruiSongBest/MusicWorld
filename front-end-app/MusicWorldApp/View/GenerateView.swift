@@ -5,6 +5,7 @@ import PhotosUI
 import SwiftData
 
 struct GenerateView: View {
+    @Environment(\.modelContext) private var modelContext
     @State private var selectedTab = 0
     @State var text: String?
     @State private var instructionPrompt = ""
@@ -30,16 +31,26 @@ struct GenerateView: View {
     @State private var generationStatus = ""
     @State private var showErrorAlert = false
     @State private var errorMessage = ""
-    @Environment(\.modelContext) private var modelContext
     @State private var currentGeneratedContent: GeneratedContent?
+    @State private var isShowingSettingsDialog = false
+    @State private var networkAddress: String = NetworkManager.shared.networkAddress
+    @State private var generatedContents: [GeneratedContent] = []
+    @State private var selectedVideoItem: PhotosPickerItem?
+    @State private var selectedVideo: URL?
+    @State private var isShowingVideoSourcePicker = false
+    @State private var isShowingVideoPhotolib = false
     
     var body: some View {
         NavigationStack {
             VStack(spacing: 20) {
                 HStack {
                     Spacer()
-                    Image(systemName: "ellipsis")
-                        .padding()
+                    Button(action: {
+                        isShowingSettingsDialog = true
+                    }) {
+                        Image(systemName: "gearshape")
+                            .padding()
+                    }
                 }
                 
                 iconButtonsRow()
@@ -87,6 +98,12 @@ struct GenerateView: View {
             }
             .navigationDestination(isPresented: $isShowingAudioPlayer) {
                 AudioPlayerView(audioData: audioData ?? Data())
+            }
+            .sheet(isPresented: $isShowingSettingsDialog) {
+                SettingsView(networkAddress: $networkAddress)
+            }
+            .onChange(of: networkAddress) { _, newValue in
+                NetworkManager.shared.networkAddress = newValue
             }
         }
     }
@@ -186,6 +203,8 @@ struct GenerateView: View {
             filtered = items.filter { $0.type == .audio }
         case 2:
             filtered = items.filter { $0.type == .image }
+        case 3:
+            filtered = items.filter { $0.type == .video }
         default:
             filtered = items
         }
@@ -202,6 +221,8 @@ struct GenerateView: View {
             return "audio"
         case 2:
             return "images"
+        case 3:
+            return "videos"
         default:
             return "items"
         }
@@ -250,6 +271,8 @@ struct GenerateView: View {
             return .audio
         case .image:
             return .image
+        case .video:
+            return .video
         default:
             return .file
         }
@@ -261,13 +284,13 @@ struct GenerateView: View {
         let textPrompt = text ?? "Default additional text"
 
         // Create a new GeneratedContent instance
-        let newGeneratedContent = GeneratedContent(prompt: textPrompt)
+        let newGeneratedContent = GeneratedContent(prompt: textPrompt, title: "Title")
         items.forEach { newGeneratedContent.addItem($0) }
 
-        NetworkManager.shared.generateAudio(textPrompt: textPrompt, items: items) { data, error in
+        NetworkManager.shared.generateAudio(textPrompt: textPrompt, items: items) { data, description, error in
             DispatchQueue.main.async {
+                self.isGenerating = false
                 if let error = error {
-                    self.isGenerating = false
                     self.errorMessage = "Error generating audio: \(error.localizedDescription)"
                     self.showErrorAlert = true
                     return
@@ -277,8 +300,9 @@ struct GenerateView: View {
                     self.generationStatus = "Processing audio..."
                     self.audioData = data
 
-                    // Store the generated audio in the GeneratedContent instance
+                    // Store the generated audio and description in the GeneratedContent instance
                     newGeneratedContent.addGeneratedAudio(data)
+                    newGeneratedContent.desc = description ?? "No description available"
 
                     // Save the GeneratedContent to SwiftData
                     self.modelContext.insert(newGeneratedContent)
@@ -290,9 +314,7 @@ struct GenerateView: View {
                     }
 
                     self.isShowingAudioPlayer = true
-                    self.isGenerating = false
                 } else {
-                    self.isGenerating = false
                     self.errorMessage = "No audio data received"
                     self.showErrorAlert = true
                 }
@@ -325,7 +347,7 @@ struct GenerateView: View {
         // Iterate over items to find audio, image, and video data
         for item in items {
             switch item.type {
-            case .audio, .image:
+            case .audio, .image, .video:
                 let fieldName: String
                 let mimeType: String
                 let fileExtension: String
@@ -339,10 +361,10 @@ struct GenerateView: View {
                     fieldName = "image"
                     mimeType = "image/jpeg"
                     fileExtension = "jpg"
-                 case .video:
-                     fieldName = "video"
-                     mimeType = "video/mp4"
-                     fileExtension = "mp4"
+                case .video:
+                    fieldName = "video"
+                    mimeType = "video/mp4"
+                    fileExtension = "mp4"
                 default:
                     continue
                 }
@@ -377,7 +399,7 @@ struct GenerateView: View {
             iconButton(icon: "doc.text", color: .blue, label: "File", tab: 0, fileType: .plainText)
             iconButton(icon: "music.note", color: .pink, label: "Audio", tab: 1, fileType: .audio)
             imageIconButton()
-            iconButton(icon: "video", color: .green, label: "Video", tab: 3, fileType: .movie)
+            videoIconButton()
         }
     }
     
@@ -417,6 +439,36 @@ struct GenerateView: View {
             selectedTab = tab
             selectedFileType = fileType
             isImporting = true
+        }
+    }
+
+    private func videoIconButton() -> some View {
+        IconButton(icon: "video", color: .green, label: "Video") {
+            selectedTab = 3
+            selectedFileType = .movie
+            isShowingVideoSourcePicker = true
+        }
+        .confirmationDialog("Choose Video Source", isPresented: $isShowingVideoSourcePicker) {
+            Button("Photo Library") {
+                isShowingVideoPhotolib = true
+            }
+            Button("File Import") {
+                isImporting = true
+            }
+        }
+        .photosPicker(isPresented: $isShowingVideoPhotolib,
+                      selection: $selectedVideoItem,
+                      matching: .videos)
+        .onChange(of: selectedVideoItem) { oldItem, newItem in
+            Task {
+                if let videoURL = try? await newItem?.loadTransferable(type: URL.self) {
+                    selectedVideo = videoURL
+                    if let videoData = try? Data(contentsOf: videoURL) {
+                        let item = Item(title: "Selected Video", duration: "\(videoData.count) bytes", content: videoData, type: .video)
+                        items.append(item)
+                    }
+                }
+            }
         }
     }
 }
@@ -477,7 +529,7 @@ struct ItemView: View {
             return "play.circle"
         case .file:
             return "doc.circle"
-        case .image:
+        case .image: 
             return "photo.circle"
         case .video:
             return "video.circle"
@@ -485,8 +537,27 @@ struct ItemView: View {
     }
 }
 
-// struct GenerateView_Previews: PreviewProvider {
-//     static var previews: some View {
-//         GenerateView()
-//     }
-// }
+struct SettingsView: View {
+    @Binding var networkAddress: String
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Network Settings")) {
+                    TextField("Network Address", text: $networkAddress)
+                }
+            }
+            .navigationTitle("Settings")
+            .navigationBarItems(trailing: Button("Done") {
+                dismiss()
+            })
+        }
+    }
+}
+
+ struct GenerateView_Previews: PreviewProvider {
+     static var previews: some View {
+         GenerateView()
+     }
+ }

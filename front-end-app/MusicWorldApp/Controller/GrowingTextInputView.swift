@@ -20,13 +20,15 @@ struct GrowingTextInputView: View {
     min(max(minHeight, contentHeight), maxHeight) + 20
   }
 
+  @Environment(\.colorScheme) private var colorScheme
+
   var body: some View {
     ZStack(alignment: .topLeading) {
       Color.white
       ZStack(alignment: .topLeading) {
         TextViewWrapper(text: $text, focused: $focused, contentHeight: $contentHeight)
               .padding(10)
-              .background(Color.gray.opacity(0.1))
+              .background(backgroundColor)
         placeholderView
               .padding(20)
       }
@@ -42,7 +44,7 @@ struct GrowingTextInputView: View {
       showPlaceholder ?
         placeholder.map {
           Text($0)
-            .foregroundColor(.gray)
+            .foregroundColor(placeholderColor)
             .font(.system(size: 16))
             .padding(.vertical, 8)
             .padding(.horizontal, 4)
@@ -50,9 +52,17 @@ struct GrowingTextInputView: View {
     )
   }
 
-    var showPlaceholder: Bool {
-        !focused && (text ?? "").isEmpty
-    }
+  var showPlaceholder: Bool {
+    !focused && (text ?? "").isEmpty
+  }
+
+  private var backgroundColor: Color {
+    colorScheme == .dark ? Color.black.opacity(0.8) : Color.gray.opacity(0.1)
+  }
+
+  private var placeholderColor: Color {
+    colorScheme == .dark ? Color.white.opacity(0.6) : Color.gray.opacity(0.5)
+  }
 }
 
 #if DEBUG

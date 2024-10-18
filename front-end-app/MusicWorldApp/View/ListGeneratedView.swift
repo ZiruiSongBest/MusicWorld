@@ -18,8 +18,11 @@ struct ListGeneratedView: View {
                 ForEach(generatedContents) { content in
                     NavigationLink(destination: GeneratedContentDetailView(content: content)) {
                         VStack(alignment: .leading) {
-                            Text(content.prompt)
+                            Text(content.title)
                                 .font(.headline)
+                            Text(content.desc)
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
                             Text("Items: \(content.items.count)")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
@@ -28,7 +31,7 @@ struct ListGeneratedView: View {
                 }
                 .onDelete(perform: deleteGeneratedContent)
             }
-            .navigationTitle("Generated Content")
+            .navigationTitle("Music Lib")
             .toolbar {
                 EditButton()
             }
@@ -44,32 +47,6 @@ struct ListGeneratedView: View {
     }
 }
 
-struct GeneratedContentDetailView: View {
-    let content: GeneratedContent
-
-    var body: some View {
-        List {
-            Section(header: Text("Prompt")) {
-                Text(content.prompt)
-            }
-            
-            Section(header: Text("Items")) {
-                ForEach(content.items) { item in
-                    ItemView(item: item)
-                }
-            }
-            
-            if !content.generatedAudioData.isEmpty {
-                Section(header: Text("Generated Audio")) {
-                    ForEach(content.generatedAudioData.indices, id: \.self) { index in
-                        NavigationLink("Audio \(index + 1)", destination: AudioPlayerView(audioData: content.generatedAudioData[index]))
-                    }
-                }
-            }
-        }
-        .navigationTitle("Generated Content Details")
-    }
-}
 
 #Preview {
     ListGeneratedView()
