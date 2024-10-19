@@ -15,7 +15,7 @@ struct MusicWorldApp: App {
     init() {
         do {
             let schema = Schema([
-                GeneratedContent.self,
+                GeneratedEntry.self,
                 Item.self
             ])
             let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)

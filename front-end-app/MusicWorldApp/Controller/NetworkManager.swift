@@ -18,19 +18,21 @@ class NetworkManager {
     // Property to get and set the network address
     var networkAddress: String {
         get {
-            return UserDefaults.standard.string(forKey: networkAddressKey) ?? ""
+            return UserDefaults.standard.string(forKey: networkAddressKey) ?? "https://egret-devoted-violently.ngrok-free.app"
         }
         set {
             UserDefaults.standard.set(newValue, forKey: networkAddressKey)
         }
     }
     
-    func generateAudio(textPrompt: String, items: [Item], completion: @escaping (Data?, String?, Error?) -> Void) {
+    func generateAudio(textPrompt: String, items: [Item], completion: @escaping (Data?, String?, String?, String?, Error?) -> Void) {
         guard !networkAddress.isEmpty,
               let url = URL(string: networkAddress + "/generate") else {
-            completion(nil, nil, NSError(domain: "Invalid URL", code: 0, userInfo: nil))
+            completion(nil, nil, nil, nil, NSError(domain: "Invalid URL", code: 0, userInfo: nil))
             return
         }
+        
+        print("Sending request to URL: \(url.absoluteString)")
         
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -44,32 +46,50 @@ class NetworkManager {
         let formData = createFormData(textPrompt: textPrompt, items: items, boundary: boundary)
         request.httpBody = formData
         
+        print("Request headers: \(request.allHTTPHeaderFields ?? [:])")
+        print("Request body size: \(formData.count) bytes")
+        
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
-                print("Error: \(error.localizedDescription)")
-                completion(nil, nil, error)
+                print("Network error: \(error.localizedDescription)")
+                completion(nil, nil, nil, nil, error)
                 return
             }
             
-            if let httpResponse = response as? HTTPURLResponse {
-                print("Status Code: \(httpResponse.statusCode)")
-                print("Headers: \(httpResponse.allHeaderFields)")
+            guard let httpResponse = response as? HTTPURLResponse else {
+                print("Invalid response type")
+                completion(nil, nil, nil, nil, NSError(domain: "Invalid response", code: 0, userInfo: nil))
+                return
+            }
+            
+            print("Response status code: \(httpResponse.statusCode)")
+            print("Response headers: \(httpResponse.allHeaderFields)")
+            
+            if httpResponse.statusCode != 200 {
+                print("HTTP error: \(httpResponse.statusCode)")
+                completion(nil, nil, nil, nil, NSError(domain: "HTTP Error", code: httpResponse.statusCode, userInfo: nil))
+                return
+            }
+            
+            let description = httpResponse.allHeaderFields["x-audio-description"] as? String
+            print("Audio description from header: \(description ?? "No description")")
+            let title = httpResponse.allHeaderFields["x-audio-title"] as? String
+            let theme = httpResponse.allHeaderFields["x-audio-theme"] as? String
+            
+            if let data = data {
+                print("Received data size: \(data.count) bytes")
                 
-                if httpResponse.statusCode != 200 {
-                    completion(nil, nil, NSError(domain: "HTTP Error", code: httpResponse.statusCode, userInfo: nil))
-                    return
-                }
-                
-                // Extract the description from the custom header
-                let description = httpResponse.allHeaderFields["X-Audio-Description"] as? String
-                print("Audio Description: \(description ?? "No description available")")
-                
-                if let data = data {
-                    print("Received audio data of size: \(data.count) bytes")
-                    completion(data, description, nil)
+                // Try to parse the first 100 bytes as a string to see what we're getting
+                if let previewString = String(data: data.prefix(100), encoding: .utf8) {
+                    print("First 100 bytes of data: \(previewString)")
                 } else {
-                    completion(nil, nil, NSError(domain: "No data received", code: 0, userInfo: nil))
+                    print("First 100 bytes are not valid UTF-8")
                 }
+                
+                completion(data, title, description, theme, nil)
+            } else {
+                print("No data received")
+                completion(nil, nil, nil, nil, NSError(domain: "No data received", code: 0, userInfo: nil))
             }
         }
         

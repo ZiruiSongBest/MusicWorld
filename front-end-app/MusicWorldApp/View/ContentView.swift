@@ -31,11 +31,11 @@ struct ContentView: View {
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         ContentView()
-            .modelContainer(for: [GeneratedContent.self, Item.self], inMemory: true)
+            .modelContainer(for: [GeneratedEntry.self, Item.self], inMemory: true)
     }
 }
 
 #Preview {
     ContentView()
-        .modelContainer(for: [GeneratedContent.self, Item.self], inMemory: true)
+        .modelContainer(for: [GeneratedEntry.self, Item.self], inMemory: true)
 }

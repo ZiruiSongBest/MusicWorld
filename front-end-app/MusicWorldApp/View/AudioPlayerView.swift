@@ -12,6 +12,8 @@ struct AudioPlayerView: View {
     @State private var volume: Float = 1.0
     @State private var isSeeking = false
     @State private var showVolumeSlider = false
+    @State private var wasPlayingBeforeDisappear = false
+    @State private var lastPlaybackTime: Double = 0.0
     
     var body: some View {
         ZStack {
@@ -86,11 +88,21 @@ struct AudioPlayerView: View {
         }
         .onAppear {
             prepareAudioPlayer()
+            if wasPlayingBeforeDisappear {
+                seek(to: lastPlaybackTime)
+                togglePlayback()
+                wasPlayingBeforeDisappear = false
+            }
         }
         .onDisappear {
             if let token = timeObserverToken {
                 audioPlayer?.removeTimeObserver(token)
                 timeObserverToken = nil
+            }
+            lastPlaybackTime = currentTime
+            if isPlaying {
+                wasPlayingBeforeDisappear = true
+                togglePlayback()
             }
         }
     }
@@ -178,5 +190,11 @@ struct AudioPlayerView: View {
     
     private func toggleVolumeSlider() {
         showVolumeSlider.toggle()
+    }
+    
+    private func seek(to time: Double) {
+        guard let player = audioPlayer else { return }
+        let newTime = CMTime(seconds: time, preferredTimescale: 600)
+        player.seek(to: newTime)
     }
 }

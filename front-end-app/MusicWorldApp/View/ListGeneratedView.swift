@@ -10,7 +10,7 @@ import SwiftData
 
 struct ListGeneratedView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query private var generatedContents: [GeneratedContent]
+    @Query(sort: \GeneratedEntry.generatedDate, order: .reverse) private var generatedContents: [GeneratedEntry]
 
     var body: some View {
         NavigationView {
@@ -25,6 +25,9 @@ struct ListGeneratedView: View {
                                 .foregroundColor(.secondary)
                             Text("Items: \(content.items.count)")
                                 .font(.subheadline)
+                                .foregroundColor(.secondary)
+                            Text(content.generatedDate, style: .date)
+                                .font(.caption)
                                 .foregroundColor(.secondary)
                         }
                     }
@@ -50,5 +53,5 @@ struct ListGeneratedView: View {
 
 #Preview {
     ListGeneratedView()
-        .modelContainer(for: [GeneratedContent.self, Item.self], inMemory: true)
+        .modelContainer(for: [GeneratedEntry.self, Item.self], inMemory: true)
 }

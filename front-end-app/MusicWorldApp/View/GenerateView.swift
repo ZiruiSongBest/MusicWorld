@@ -25,20 +25,34 @@ struct GenerateView: View {
     @State private var isInputting = false
     @State private var isShowingImageSourcePicker = false
     @State private var isShowingPhotolib = false
+    @State private var isShowingPreview = false
     @State private var selectedItem: PhotosPickerItem?
     @State private var selectedImage: UIImage?
     @State private var isGenerating = false
     @State private var generationStatus = ""
     @State private var showErrorAlert = false
     @State private var errorMessage = ""
-    @State private var currentGeneratedContent: GeneratedContent?
+    @State private var currentGeneratedContent: GeneratedEntry?
     @State private var isShowingSettingsDialog = false
     @State private var networkAddress: String = NetworkManager.shared.networkAddress
-    @State private var generatedContents: [GeneratedContent] = []
+    @State private var generatedContents: [GeneratedEntry] = []
     @State private var selectedVideoItem: PhotosPickerItem?
     @State private var selectedVideo: URL?
     @State private var isShowingVideoSourcePicker = false
     @State private var isShowingVideoPhotolib = false
+    @State private var navigateToDetailView = false
+    @State private var generationMessages = [
+        "Brewing creative ideas...",
+        "Harmonizing the elements...",
+        "Crafting audio magic...",
+        "Tuning the virtual instruments...",
+        "Mixing imagination with technology...",
+        "Creating a masterpiece...",
+        "Unleashing the power of AI..."
+    ]
+    @State private var currentMessageIndex = 0
+    @State private var messageOpacity = 1.0
+    @State private var circleScale: CGFloat = 1.0
     
     var body: some View {
         NavigationStack {
@@ -75,8 +89,7 @@ struct GenerateView: View {
                 generateButton
                 
                 if isGenerating {
-                    ProgressView(generationStatus)
-                        .padding()
+                    generationStatusView
                 }
             }
             .padding(10)
@@ -96,8 +109,10 @@ struct GenerateView: View {
             } message: {
                 Text(errorMessage)
             }
-            .navigationDestination(isPresented: $isShowingAudioPlayer) {
-                AudioPlayerView(audioData: audioData ?? Data())
+            .navigationDestination(isPresented: $navigateToDetailView) {
+                if let content = currentGeneratedContent {
+                    GeneratedContentDetailView(content: content)
+                }
             }
             .sheet(isPresented: $isShowingSettingsDialog) {
                 SettingsView(networkAddress: $networkAddress)
@@ -136,10 +151,15 @@ struct GenerateView: View {
             } else {
                 LazyVStack(spacing: 10) {
                     ForEach(filteredItems) { item in
-                        ItemView(item: item)
+                        ItemView(item: item, isShowingPreview: $isShowingPreview)
                             .background(Color.gray.opacity(0.1))
                             .cornerRadius(10)
                             .contextMenu {
+                                Button(action: {
+                                    isShowingPreview = true
+                                }) {
+                                    Label("Preview", systemImage: "eye")
+                                }
                                 Button(action: {
                                     if let index = items.firstIndex(where: { $0.id == item.id }) {
                                         items.remove(at: index)
@@ -160,8 +180,8 @@ struct GenerateView: View {
             if !isInputting {
                 HStack {
                     if isGenerating {
-                        ProgressView()
-                            .frame(width: 30, height: 30)
+//                        ProgressView()
+//                            .frame(width: 30, height: 30)
                     } else {
                         Image(systemName: "waveform")
                             .resizable()
@@ -280,14 +300,16 @@ struct GenerateView: View {
     
     private func generateAudio() {
         isGenerating = true
-        generationStatus = "Preparing request..."
-        let textPrompt = text ?? "Default additional text"
+        currentMessageIndex = 0
+        messageOpacity = 1
+        circleScale = 1.0
+        let textPrompt = text ?? ""
 
         // Create a new GeneratedContent instance
-        let newGeneratedContent = GeneratedContent(prompt: textPrompt, title: "Title")
+        let newGeneratedContent = GeneratedEntry(prompt: textPrompt)
         items.forEach { newGeneratedContent.addItem($0) }
 
-        NetworkManager.shared.generateAudio(textPrompt: textPrompt, items: items) { data, description, error in
+        NetworkManager.shared.generateAudio(textPrompt: textPrompt, items: items) { data, title, description, theme, error in
             DispatchQueue.main.async {
                 self.isGenerating = false
                 if let error = error {
@@ -303,17 +325,21 @@ struct GenerateView: View {
                     // Store the generated audio and description in the GeneratedContent instance
                     newGeneratedContent.addGeneratedAudio(data)
                     newGeneratedContent.desc = description ?? "No description available"
+                    newGeneratedContent.title = title ?? "Generated Audio"
+                    newGeneratedContent.theme = theme ?? "Music"
 
                     // Save the GeneratedContent to SwiftData
                     self.modelContext.insert(newGeneratedContent)
                     do {
                         try self.modelContext.save()
                         print("GeneratedContent saved successfully")
+                        
+                        // Set the current generated content and trigger navigation
+                        self.currentGeneratedContent = newGeneratedContent
+                        self.navigateToDetailView = true
                     } catch {
                         print("Error saving GeneratedContent: \(error)")
                     }
-
-                    self.isShowingAudioPlayer = true
                 } else {
                     self.errorMessage = "No audio data received"
                     self.showErrorAlert = true
@@ -471,6 +497,55 @@ struct GenerateView: View {
             }
         }
     }
+
+    private var generationStatusView: some View {
+        VStack {
+            ZStack {
+                Circle()
+                    .stroke(Color.blue.opacity(0.3), lineWidth: 5)
+                    .frame(width: 100, height: 100)
+                
+                Circle()
+                    .stroke(Color.blue, lineWidth: 5)
+                    .frame(width: 100, height: 100)
+                    .scaleEffect(circleScale)
+                    .opacity(2 - circleScale)
+                    .animation(
+                        Animation.easeInOut(duration: 1)
+                            .repeatForever(autoreverses: false),
+                        value: circleScale
+                    )
+                
+                ProgressView()
+            }
+            .onAppear {
+                withAnimation(.easeInOut(duration: 1).repeatForever(autoreverses: false)) {
+                    self.circleScale = 1.5
+                }
+            }
+            
+            Text(generationMessages[currentMessageIndex])
+                .opacity(messageOpacity)
+                .animation(.easeInOut(duration: 1), value: messageOpacity)
+                .onAppear {
+                    startMessageAnimation()
+                }
+        }
+    }
+
+    private func startMessageAnimation() {
+        Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { _ in
+            withAnimation {
+                messageOpacity = 0
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                currentMessageIndex = (currentMessageIndex + 1) % generationMessages.count
+                withAnimation {
+                    messageOpacity = 1
+                }
+            }
+        }
+    }
 }
 
 struct IconButton: View {
@@ -494,46 +569,6 @@ struct IconButton: View {
             }
         }
         .buttonStyle(PlainButtonStyle())
-    }
-}
-
-struct ItemView: View {
-    let item: Item
-    
-    var body: some View {
-        ZStack {
-//            Color.gray.opacity(0.1)
-//                .cornerRadius(10)
-            HStack {
-                VStack(alignment: .leading) {
-                    Text(item.title)
-                        .font(.headline)
-                    Text(item.duration)
-                        .font(.subheadline)
-                        .foregroundColor(.gray)
-                }
-                Spacer()
-                Image(systemName: iconName)
-                    .resizable()
-                    .frame(width: 30, height: 30)
-            }
-            .padding() // Padding for the content inside the item
-        }
-        .listRowInsets(EdgeInsets()) // Remove default list row insets for a custom look
-        .padding(.vertical, 5) // Add padding to avoid items sticking together
-    }
-    
-    var iconName: String {
-        switch item.type {
-        case .audio:
-            return "play.circle"
-        case .file:
-            return "doc.circle"
-        case .image: 
-            return "photo.circle"
-        case .video:
-            return "video.circle"
-        }
     }
 }
 
