@@ -1,4 +1,4 @@
-prompt = {
+prompt_template = {
     "analyze_audio": (
         "You are a audio analysis expert. We have used model to transcribe the audio and get the emotion as follows:\n"
         "{emotion}\n"
@@ -16,5 +16,14 @@ prompt = {
         "Scene: Provide a scene or setting that could inspire the music. This could be a physical place (like a forest, cityscape, or beach), a time of day (such as dawn, dusk, or midnight), or a specific event (like a celebration, meditation, or a battle).\n\n"
         "Description: Give a brief description of the intended mood, atmosphere, or story behind the music. Use emotional and sensory language to convey the feeling the music should evoke, such as 'mysterious and enchanting,' 'bright and energetic,' or 'calm and introspective.'\n\n"
         "The output should consist of four keywords or phrases that capture each aspect clearly and complement each other to inspire the music composition. Only output the keywords, no more text."
+    ),
+    "summarize": (
+        "You are a music generation expert. Now we have various input from the user as follows:\n"
+        "{{input}}\n"
+        "Summarize the information as a Title and a Description.\n"
+        "Title: A concise title for the music piece.\n"
+        "Description: A brief description of the music piece.\n"
+        "Keep your response in 5 words for Title and 15 words for Description."
+        "Your json output should have a dict with two keys: 'Title' and 'Description'."
     )
 }

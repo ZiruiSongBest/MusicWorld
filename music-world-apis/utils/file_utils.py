@@ -22,7 +22,8 @@ async def save_multiple_files(files: list[UploadFile], user_id: str) -> list[Pat
     return paths
 
 
-async def schedule_deletion(file_path: Path, delay: int = 2000):
+async def schedule_deletion(file_path: Path | str, delay: int = 10000):
     await asyncio.sleep(delay)
-    if file_path.exists():
-        file_path.unlink()
+    path = Path(file_path) if isinstance(file_path, str) else file_path
+    if path.exists():
+        path.unlink()
