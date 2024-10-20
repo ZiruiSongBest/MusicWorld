@@ -10,6 +10,7 @@ from typing import Optional
 import asyncio
 from fastapi.responses import StreamingResponse, JSONResponse
 from starlette.background import BackgroundTask
+import uuid
 
 router = APIRouter()
 
@@ -71,8 +72,9 @@ async def generate_content(
     
     user_id = request.cookies.get("user_id")
     
-    # if not user_id:
-    #     return {"error": "user_id cookie is missing"}
+    if not user_id:
+        # Generate a temporary user ID if not provided
+        user_id = str(uuid.uuid4())
 
     user_folder = UPLOAD_DIR / user_id
     user_folder.mkdir(parents=True, exist_ok=True)
@@ -162,7 +164,7 @@ async def generate_content(
     # description = "This is a test description"
     # theme = "This is a test theme"
     
-    return AudioStreamWithDescriptionResponse(
+    response = AudioStreamWithDescriptionResponse(
         content=iterfile(),
         media_type="audio/mpeg",
         title=title,
@@ -170,6 +172,12 @@ async def generate_content(
         theme=theme,
         background=BackgroundTask(generated_audio_path.unlink)
     )
+    
+    # Set the user_id cookie if it wasn't present in the request
+    if not request.cookies.get("user_id"):
+        response.set_cookie(key="user_id", value=user_id)
+    
+    return response
 
     # base_url = f"{request.url.scheme}://{request.url.hostname}:{request.url.port}"
     # audio_url = f"{base_url}/uploads/{user_id}/generated_audio.mp3"
