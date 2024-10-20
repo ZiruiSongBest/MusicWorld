@@ -10,12 +10,7 @@ struct GenerateView: View {
     @State var text: String?
     @State private var instructionPrompt = ""
     @State private var isEditing = false
-    @State private var items: [Item] = [
-//        Item(title: "Twelve Carat Toothache", duration: "5min", content: "", type: .audio),
-//        Item(title: "Background Audio 1", duration: "15min", content: "", type: .audio),
-//        Item(title: "Project Report", duration: "10 pages", content: "", type: .file),
-        //        Item(title: "Vacation Photo", duration: "2.5 MB", content: "", type: .image)
-    ]
+    @State private var items: [Item] = []
     @State private var isShowingDocumentPicker = false
     @State private var selectedFileType: UTType = .audio
     @State private var isImporting = false
@@ -53,6 +48,16 @@ struct GenerateView: View {
     @State private var currentMessageIndex = 0
     @State private var messageOpacity = 1.0
     @State private var circleScale: CGFloat = 1.0
+    @State private var isShowingCamera = false
+    @State private var capturedImage: UIImage?
+    
+    private var debugItems: String {
+        return items.map { "[\($0.type): \($0.title)]" }.joined(separator: ", ")
+    }
+
+    private var debugFilteredItems: String {
+        return filteredItems.map { "[\($0.type): \($0.title)]" }.joined(separator: ", ")
+    }
     
     var body: some View {
         NavigationStack {
@@ -86,11 +91,20 @@ struct GenerateView: View {
                 }
                 .padding(.horizontal)
                 
-                generateButton
                 
                 if isGenerating {
                     generationStatusView
                 }
+                
+                generateButton
+
+//                Text("Debug - All Items: \(debugItems)")
+//                    .font(.caption)
+//                    .foregroundColor(.gray)
+//                
+//                Text("Debug - Filtered Items: \(debugFilteredItems)")
+//                    .font(.caption)
+//                    .foregroundColor(.gray)
             }
             .padding(10)
             .fileImporter(
@@ -228,8 +242,8 @@ struct GenerateView: View {
         default:
             filtered = items
         }
-        // Debug: Print the filtered items
-        print("Filtered items: \(filtered)")
+        // print("Filtered items for tab \(selectedTab): \(filtered.map { "[\($0.type): \($0.title)]" })")
+        // print("All items: \(items.map { "[\($0.type): \($0.title)]" })")
         return filtered
     }
     
@@ -436,8 +450,10 @@ struct GenerateView: View {
             isShowingImageSourcePicker = true
         }
         .confirmationDialog("Choose Image Source", isPresented: $isShowingImageSourcePicker) {
+            Button("Camera") {
+                isShowingCamera = true
+            }
             Button("Photo Library") {
-                // This will be handled by PhotosPicker
                 isShowingPhotolib = true
             }
             Button("File Import") {
@@ -447,6 +463,9 @@ struct GenerateView: View {
         .photosPicker(isPresented: $isShowingPhotolib,
                       selection: $selectedItem,
                       matching: .images)
+        .sheet(isPresented: $isShowingCamera) {
+            CameraView(capturedImage: $capturedImage)
+        }
         .onChange(of: selectedItem) { oldItem, newItem in
             Task {
                 if let data = try? await newItem?.loadTransferable(type: Data.self) {
@@ -455,6 +474,14 @@ struct GenerateView: View {
                         let item = Item(title: "Selected Image", duration: "\(data.count) bytes", content: data, type: .image)
                         items.append(item)
                     }
+                }
+            }
+        }
+        .onChange(of: capturedImage) { oldImage, newImage in
+            if let image = newImage {
+                if let imageData = image.jpegData(compressionQuality: 0.8) {
+                    let item = Item(title: "Captured Image", duration: "\(imageData.count) bytes", content: imageData, type: .image)
+                    items.append(item)
                 }
             }
         }
@@ -487,14 +514,81 @@ struct GenerateView: View {
                       matching: .videos)
         .onChange(of: selectedVideoItem) { oldItem, newItem in
             Task {
-                if let videoURL = try? await newItem?.loadTransferable(type: URL.self) {
-                    selectedVideo = videoURL
-                    if let videoData = try? Data(contentsOf: videoURL) {
-                        let item = Item(title: "Selected Video", duration: "\(videoData.count) bytes", content: videoData, type: .video)
-                        items.append(item)
+                do {
+                    if let data = try await newItem?.loadTransferable(type: Data.self) {
+                        print("Video data loaded, size: \(data.count) bytes")
+                        
+                        if let compressedData = await compressVideo(data: data) {
+                            let item = Item(title: "Selected Video", duration: "\(compressedData.count) bytes", content: compressedData, type: .video)
+                            DispatchQueue.main.async {
+                                self.items.append(item)
+                                print("Compressed video added to items array: \(item.title)")
+                            }
+                        } else {
+                            print("Video compression failed, using original data")
+                            let item = Item(title: "Selected Video", duration: "\(data.count) bytes", content: data, type: .video)
+                            DispatchQueue.main.async {
+                                self.items.append(item)
+                                print("Original video added to items array: \(item.title)")
+                            }
+                        }
+                    } else {
+                        print("Failed to load video data")
                     }
+                } catch {
+                    print("Error processing video: \(error)")
                 }
             }
+        }
+    }
+
+    // Add this new function to compress the video
+    private func compressVideo(data: Data) async -> Data? {
+        guard let tempURL = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?.appendingPathComponent("tempVideo.mov") else {
+            print("Failed to create temporary URL")
+            return nil
+        }
+        
+        do {
+            try data.write(to: tempURL)
+            
+            let asset = AVAsset(url: tempURL)
+            guard let exportSession = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetMediumQuality) else {
+                print("Failed to create export session")
+                return nil
+            }
+            
+            let compressedURL = tempURL.deletingLastPathComponent().appendingPathComponent("compressedVideo.mp4")
+            
+            // Remove any existing file at the destination URL
+            try? FileManager.default.removeItem(at: compressedURL)
+            
+            exportSession.outputURL = compressedURL
+            exportSession.outputFileType = .mp4
+            exportSession.shouldOptimizeForNetworkUse = true
+            
+            await exportSession.export()
+            
+            switch exportSession.status {
+            case .completed:
+                if let compressedData = try? Data(contentsOf: compressedURL) {
+                    print("Video compressed from \(data.count) bytes to \(compressedData.count) bytes")
+                    return compressedData
+                } else {
+                    print("Failed to read compressed video data")
+                }
+            case .failed:
+                print("Export failed: \(exportSession.error?.localizedDescription ?? "Unknown error")")
+            case .cancelled:
+                print("Export cancelled")
+            default:
+                print("Export ended with status: \(exportSession.status.rawValue)")
+            }
+            
+            return nil
+        } catch {
+            print("Error compressing video: \(error)")
+            return nil
         }
     }
 
@@ -523,6 +617,7 @@ struct GenerateView: View {
                     self.circleScale = 1.5
                 }
             }
+            .padding(.vertical)
             
             Text(generationMessages[currentMessageIndex])
                 .opacity(messageOpacity)
@@ -591,8 +686,56 @@ struct SettingsView: View {
     }
 }
 
- struct GenerateView_Previews: PreviewProvider {
-     static var previews: some View {
-         GenerateView()
-     }
- }
+struct CameraView: UIViewControllerRepresentable {
+    @Binding var capturedImage: UIImage?
+    @Environment(\.presentationMode) var presentationMode
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.delegate = context.coordinator
+        
+        // Check if camera is available
+        if UIImagePickerController.isSourceTypeAvailable(.camera) {
+            picker.sourceType = .camera
+            
+            // Check for specific camera features
+            if UIImagePickerController.isCameraDeviceAvailable(.rear) {
+                picker.cameraDevice = .rear
+            } else if UIImagePickerController.isCameraDeviceAvailable(.front) {
+                picker.cameraDevice = .front
+            }
+            
+            // You can add more checks for specific features here
+        } else {
+            // Fallback to photo library if camera is not available
+            picker.sourceType = .photoLibrary
+        }
+        
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let parent: CameraView
+
+        init(_ parent: CameraView) {
+            self.parent = parent
+        }
+
+        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+            if let image = info[.originalImage] as? UIImage {
+                parent.capturedImage = image
+            }
+            parent.presentationMode.wrappedValue.dismiss()
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            parent.presentationMode.wrappedValue.dismiss()
+        }
+    }
+}
