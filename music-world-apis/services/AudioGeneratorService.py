@@ -12,8 +12,11 @@ class AudioGenerator:
         return text_prompt
 
     def generate_audio(self, prompt, output_file='test.wav', pieces=1, negative_prompt="noisy, chaotic, dissonant", num_inference_steps=200, 
-                       audio_end_in_s=40.0, num_waveforms_per_prompt=1, seed=0):
-        
+                       audio_end_in_s=None, num_waveforms_per_prompt=1, seed=0):
+        # Generate random audio_end_in_s if not provided
+        if audio_end_in_s is None:
+            audio_end_in_s = random.uniform(25.0, 50.0)
+            
         generator = torch.Generator(self.device).manual_seed(seed)
         
         audio = self.pipe(
