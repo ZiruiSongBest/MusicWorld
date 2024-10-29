@@ -95,24 +95,41 @@ async def generate_content(
     # Schedule deletion after 24 hours
     for path in text_paths + audio_paths + image_paths + video_paths:
         asyncio.create_task(schedule_deletion(path))
-        
-    multi_modal_information = f"User's text prompt: {text_prompt}\n" if text_prompt else ""
+    
+    instruction_response = ""
+    instruction_response = None
+    if text_prompt:
+        instruction_prompt = prompt_service.create_prompt("instruction_analysis", text_prompt)
+        result_code, instruction_response = prompt_service.get_response(instruction_prompt)
+        print("*" * 10)
+        print("instruction prompt analysis: ", instruction_response)
+    
+    multi_modal_information = f"The user gives a instruction that wants to create a music piece of: {instruction_response}\n You should align to the user's instruction.\n" if instruction_response else ""
+    # multi_modal_information += "Now we have various input from the user as follows:\n"
+    multi_modal_information += "Beside, the user also provide some input files as follows:\n" if text_paths or audio_paths or image_paths or video_paths else ""
+    
+    print("*" * 10)
+    print("multi_modal_information:")
+    print(multi_modal_information)
         
     text_information = prompt_service.get_text(text_paths)
     # TODO: Get summarized content from text_information
-    # multi_modal_information += (
-    #     f"User's text file input: {text_information}\n"
-    # )
+    text_information = (
+        f"User's text file input: {text_information}\n" if text_information else ""
+    )
+    multi_modal_information += text_information
+    
+    print(text_information)
     
     multi_modal_information += (
-        f"User's audio file input: \n"
-    ) if audio_paths else ""
+        f"User's audio file input: \n" if audio_paths else ""
+    )
     
     for i, audio_path in enumerate(audio_paths):
         audio_information = audio_analyzer_service.audio_analysis(audio_path, text_prompt)
         print(f'audio {i}: {audio_information}')
         multi_modal_information += (
-            f"Audio piece {i}: {audio_information}\n"
+            f"Audio piece {i}: {audio_information}\n" if audio_information else ""
         )
     
     # TODO: Get summarized content from video_information
@@ -125,25 +142,39 @@ async def generate_content(
     # print("*" * 10)
     
     ### Generate audio prompt
-    audio_prompt = prompt_service.create_prompt("generate_audio_prompt", multi_modal_information, image_paths=image_paths)
-    result_code, theme = prompt_service.get_response(audio_prompt)
+    print("multi_modal_information:")
+    print(multi_modal_information)
+    
+    audio_gen_prompt = prompt_service.create_prompt("generate_audio_prompt", multi_modal_information, image_paths=image_paths)
+    print("audio_gen_prompt: ", audio_gen_prompt[0]["content"][0]["text"])
+    result_code, theme = prompt_service.get_response(audio_gen_prompt)
+    print("*" * 10)
+    print("audio theme: ", theme)
     
     # Generate title and description
-    summarize_prompt = prompt_service.create_prompt("summarize", multi_modal_information)
+    title_prompt = (
+        "The user gives a instruction that wants to create a music piece of: " + instruction_response + '\n' if instruction_response and instruction_response != "" else ""
+        "With synthesized information from user, the music piece contains the theme: " + theme + '\n'
+    )
+    summarize_prompt = prompt_service.create_prompt("summarize", title_prompt)
+    print("summarize_prompt: ", summarize_prompt[0]["content"][0]["text"])
     result_code, response = prompt_service.get_response(summarize_prompt, json_output=True)
     summary = prompt_service.parse_summary_response(response)
     title = summary.get("Title", "Untitled")
     description = summary.get("Description", "No description available")
-        
+    length = summary.get("Length", 20)
     
-    # print("description: ", description)
+    print("*" * 10)
+    print("title: ", title)
+    print("description: ", description)
 
     generated_audio_path = user_folder / "generated_audio.wav"
     # generated_audio_path = "uploads/7d6617f5-7c75-4144-8859-dee3f6cb85d5/audio_1.mp3"
 
     # generate audio
     generated_audio = audio_generator_service.generate_audio(
-        theme
+        theme,
+        audio_end_in_s=int(length)
     )
     audio_generator_service.save_audio(generated_audio, generated_audio_path)
 

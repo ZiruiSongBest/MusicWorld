@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 from services.prompt import prompt_template
 import os
 import base64
+from io import BytesIO
+from PIL import Image
 
 load_dotenv()
 
@@ -18,7 +20,7 @@ class PromptService:
         Args:
             text (str): prompt.
             image_url (str): Optional image.
-            model (str): default: gpt-4o.
+            model (str): default: gpt-4.
         
         Returns:
             tuple: (result_code, response_text). result_code 0 for success, 1 for error.
@@ -40,8 +42,8 @@ class PromptService:
             return 1, f"Error creating the prompt: {e}"
     
     def create_prompt(self, template, text, image_paths=None):
-        print("Requested template:", template)
-        print("Available templates:", list(prompt_template.keys()))
+        # print("Requested template:", template)
+        # print("Available templates:", list(prompt_template.keys()))
         try:
             prompt_text = prompt_template[template].format(input=text)
             messages = [{"role": "user", "content": [{"type": "text", "text": prompt_text}]}]
@@ -49,8 +51,13 @@ class PromptService:
             if image_paths:
                 for image_path in image_paths:
                     try:
-                        with open(image_path, "rb") as image_file:
-                            base64_image = base64.b64encode(image_file.read()).decode('utf-8')
+                        with Image.open(image_path) as img:
+                            img = img.convert('RGB')
+                            buffered = BytesIO()
+                            img.save(buffered, format="JPEG", quality=50)
+                            img_byte = buffered.getvalue()
+                            base64_image = base64.b64encode(img_byte).decode('utf-8')
+                        
                         messages[0]["content"].append({
                             "type": "image_url",
                             "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}

@@ -12,7 +12,7 @@ class AudioGenerator:
         return text_prompt
 
     def generate_audio(self, prompt, output_file='test.wav', pieces=1, negative_prompt="noisy, chaotic, dissonant", num_inference_steps=200, 
-                       audio_end_in_s=40.0, num_waveforms_per_prompt=1, seed=0):
+                       audio_end_in_s=20.0, num_waveforms_per_prompt=1, seed=0):
         
         generator = torch.Generator(self.device).manual_seed(seed)
         
@@ -36,3 +36,5 @@ class AudioGenerator:
 
 
 audio_generator_service = AudioGenerator()
+# audio = audio_generator_service.generate_audio(prompt="Traffic, people walking, city", audio_end_in_s=10.0)
+# audio_generator_service.save_audio(audio, "traffic.wav")
