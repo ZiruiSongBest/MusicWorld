@@ -36,3 +36,11 @@ In the directory music-world-apis
 ```bash
 python main.py
 ```
+
+# Use of NGROK
+
+Download ngrok from [here](https://ngrok.com/download)
+
+```bash
+./ngrok http --url=egret-devoted-violently.ngrok-free.app 8000
+```
